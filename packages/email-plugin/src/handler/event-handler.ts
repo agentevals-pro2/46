@@ -15,6 +15,7 @@ import {
     SetAttachmentsFn,
     SetOptionalAddressFieldsFn,
     SetTemplateVarsFn,
+    SetSubjectFn,
 } from '../types';
 
 /**
@@ -140,7 +141,7 @@ export class EmailEventHandler<T extends string = string, Event extends EventWit
     private setOptionalAddressFieldsFn?: SetOptionalAddressFieldsFn<Event>;
     private filterFns: Array<(event: Event) => boolean> = [];
     private configurations: EmailTemplateConfig[] = [];
-    private defaultSubject: string;
+    private subject: string | SetSubjectFn<Event>;
     private from: string;
     private optionalAddressFields: {
         cc?: string;
@@ -214,8 +215,8 @@ export class EmailEventHandler<T extends string = string, Event extends EventWit
      * Sets the default subject of the email. The subject string may use Handlebars variables defined by the
      * setTemplateVars() method.
      */
-    setSubject(defaultSubject: string): EmailEventHandler<T, Event> {
-        this.defaultSubject = defaultSubject;
+    setSubject(subject: string | SetSubjectFn<Event>): EmailEventHandler<T, Event> {
+        this.subject = subject;
         return this;
     }
 
@@ -318,7 +319,7 @@ export class EmailEventHandler<T extends string = string, Event extends EventWit
         asyncHandler.setOptionalAddressFieldsFn = this.setOptionalAddressFieldsFn;
         asyncHandler.filterFns = this.filterFns;
         asyncHandler.configurations = this.configurations;
-        asyncHandler.defaultSubject = this.defaultSubject;
+        asyncHandler.subject = this.subject;
         asyncHandler.from = this.from;
         asyncHandler._mockEvent = this._mockEvent as any;
         return asyncHandler;
@@ -370,7 +371,14 @@ export class EmailEventHandler<T extends string = string, Event extends EventWit
         const { ctx } = event;
         const languageCode = this.setLanguageCodeFn?.(event) || ctx.languageCode;
         const configuration = this.getBestConfiguration(ctx.channel.code, languageCode);
-        const subject = configuration ? configuration.subject : this.defaultSubject;
+        let subject: string | undefined;
+        if (configuration) {
+            subject = configuration.subject;
+        } else if (typeof this.subject === 'function') {
+            subject = await this.subject(event, ctx, injector);
+        } else {
+            subject = this.subject;
+        }
         if (subject == null) {
             throw new Error(
                 `No subject field has been defined. ` +
