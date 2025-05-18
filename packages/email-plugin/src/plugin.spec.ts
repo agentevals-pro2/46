@@ -666,6 +666,37 @@ describe('EmailPlugin', () => {
         });
     });
 
+    describe('dynamic subject', () => {
+        it('supports function-based subjects and passes dependencies', async () => {
+            let eventArg: MockEvent | undefined;
+            let ctxArg: RequestContext | undefined;
+            let injectorArg: Injector | undefined;
+            const handler = new EmailEventListener('test')
+                .on(MockEvent)
+                .setFrom('"test from" <noreply@test.com>')
+                .setRecipient(() => 'test@test.com')
+                .setSubject((event, ctx, injector) => {
+                    eventArg = event;
+                    ctxArg = ctx;
+                    injectorArg = injector;
+                    return 'dynamic ' + (event.shouldSend ? 'yes' : 'no');
+                });
+
+            await initPluginWithHandlers([handler]);
+            const ctx = RequestContext.deserialize({
+                _channel: { code: DEFAULT_CHANNEL_CODE },
+                _languageCode: LanguageCode.en,
+            } as any);
+            eventBus.publish(new MockEvent(ctx, true));
+            await pause();
+
+            expect(onSend.mock.calls[0][0].subject).toBe('dynamic yes');
+            expect(eventArg).toBeInstanceOf(MockEvent);
+            expect(ctxArg).toBe(ctx);
+            expect(injectorArg?.constructor.name).toBe('Injector');
+        });
+    });
+
     describe('orderConfirmationHandler', () => {
         beforeEach(async () => {
             await initPluginWithHandlers([orderConfirmationHandler], {

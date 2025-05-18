@@ -143,6 +143,21 @@ type SetTemplateVarsFn<Event> = (
 ```
 
 
+## SetSubjectFn
+
+<GenerationInfo sourceFile="packages/email-plugin/src/types.ts" sourceLine="386" packageName="@vendure/email-plugin" />
+
+A function used to dynamically generate the subject line of an email.
+See <a href='/reference/core-plugins/email-plugin/email-event-handler#emaileventhandler'>EmailEventHandler</a>.setSubject().
+
+```ts title="Signature"
+type SetSubjectFn<Event> = (
+    event: Event,
+    ctx: RequestContext,
+    injector: Injector,
+) => string | Promise<string>
+```
+
 ## SetAttachmentsFn
 
 <GenerationInfo sourceFile="packages/email-plugin/src/types.ts" sourceLine="388" packageName="@vendure/email-plugin" />
